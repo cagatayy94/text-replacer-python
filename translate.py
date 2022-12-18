@@ -22,6 +22,24 @@ for root, dirs, files in os.walk(path):
         file_names.append(os.path.join(root, file))
 
 # Print the file names
+def filterTags(texts):
+    filtered_arr = list(filter(lambda x: '"' not in x, texts))
+    filtered_arr = list(filter(lambda x: '&' not in x, filtered_arr))
+    filtered_arr = list(filter(lambda x: '×' not in x, filtered_arr))
+    filtered_arr = list(filter(lambda x: "'" not in x, filtered_arr))
+    filtered_arr = list(filter(lambda x: "..." not in x, filtered_arr))
+    filtered_arr = list(filter(lambda x: "#" not in x, filtered_arr))
+    filtered_arr = list(filter(lambda x: ">" not in x, filtered_arr))
+
+    filtered_arr = list(filter(None, filtered_arr))
+    filtered_arr = list(filter(bool, filtered_arr))
+    filtered_arr = list(filter(len, filtered_arr))
+    filtered_arr = list(filter(lambda item: item, filtered_arr))
+    filtered_arr = list(filter(lambda x: "Dashboard" not in x, filtered_arr))
+    filtered_arr = list(filter(lambda x: "dashboard" not in x, filtered_arr))
+
+    return filtered_arr
+
 for filename in file_names:
     # Load the HTML file
     with open(filename, "r") as file:
@@ -53,25 +71,17 @@ for filename in file_names:
     # Extract the text from the elements you want to translate
     texts = [element.text for element in soup.find_all(tags)]
 
-    filtered_arr = list(filter(lambda x: '"' not in x, texts))
-    filtered_arr = list(filter(lambda x: '&' not in x, filtered_arr))
-    filtered_arr = list(filter(lambda x: '×' not in x, filtered_arr))
-    filtered_arr = list(filter(lambda x: "'" not in x, filtered_arr))
-    filtered_arr = list(filter(lambda x: "..." not in x, filtered_arr))
-    filtered_arr = list(filter(lambda x: "#" not in x, filtered_arr))
-    filtered_arr = list(filter(lambda x: ">" not in x, filtered_arr))
-    texts = filtered_arr
+    # filter tags
+    texts = filterTags(texts)
 
     translated_texts = []
     for text in texts:
         text = text.strip()
-        if text == "":
-            print("It has only white spaces passing api call")
+        if text == 'Dashboard':
+            print("It has only white spaces or Dashboard passing api call")
             continue
         print("text: " + text)
 
-        if text == "Delete":
-            print(filename)
         # Set the request data
         data = {
             'q': text.lower(),
@@ -90,16 +100,15 @@ for filename in file_names:
             # Extract the translated text from the response
             translation = response.json()['responseData']['translatedText'].capitalize()
 
-            # translation = "passing go to api"
-
             translations.setdefault(text.lower(), translation.lower())
 
-        print(translation)
+        print("translation: " + translation)
 
         # Replace the original text with the translated text
         translated_texts.append(translation)
-        for element, translated_text in zip(soup.find_all(tags), translated_texts):
-            element.string = translated_text.capitalize()
+
+    for element, translated_text in zip(soup.find_all(tags), translated_texts):
+        element.string = translated_text.capitalize()
 
     # Extract the path and the file name
     path, file_name = os.path.split(filename)
