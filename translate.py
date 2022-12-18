@@ -1,12 +1,19 @@
+from os.path import exists
+
 import requests
 from bs4 import BeautifulSoup
 import os
+import json
 
 # Replace YOUR_API_KEY with your actual API key
-api_key = '##'
+api_key = '35f9736be042660d1010'
+translations = {}
 
 # Initialize an empty list to store the file names
 file_names = []
+if exists("translations.json"):
+    with open("translations.json", "r") as file:
+        translations = json.load(file)
 
 # Walk through the directory tree and get the names of all files
 path = "files"
@@ -52,6 +59,7 @@ for filename in file_names:
     filtered_arr = list(filter(lambda x: "'" not in x, filtered_arr))
     filtered_arr = list(filter(lambda x: "..." not in x, filtered_arr))
     filtered_arr = list(filter(lambda x: "#" not in x, filtered_arr))
+    filtered_arr = list(filter(lambda x: ">" not in x, filtered_arr))
     texts = filtered_arr
 
     translated_texts = []
@@ -71,14 +79,22 @@ for filename in file_names:
             'key': api_key
         }
 
-        # Make the request
-        # response = requests.post(endpoint, headers=headers, data=data)
+        savedTranslation = translations.get(text.lower())
 
-        # Extract the translated text from the response
-        # translation = response.json()['responseData']['translatedText'].capitalize()
-        translation = "passing go to api"
+        translation = savedTranslation
 
-        print("translation: " + translation)
+        if savedTranslation is None:
+            print("make api call is not exist on cache")
+            # Make the request
+            response = requests.post(endpoint, headers=headers, data=data)
+            # Extract the translated text from the response
+            translation = response.json()['responseData']['translatedText'].capitalize()
+
+            # translation = "passing go to api"
+
+            translations.setdefault(text.lower(), translation.lower())
+
+        print(translation)
 
         # Replace the original text with the translated text
         translated_texts.append(translation)
@@ -94,5 +110,17 @@ for filename in file_names:
         os.makedirs(translated_path)
 
     # Save the modified HTML file
+
+    if exists(translated_path + file_name):
+        os.remove(translated_path + file_name)
     with open(translated_path + file_name, "x", encoding="utf-8") as file:
-        file.write(str(soup).replace("&gt;", ">").replace("&lt;", "<"))
+        file.write(
+            str(soup).replace("&gt;", ">")
+            .replace("&lt;", "<")
+            .replace("&amp;&amp;", "&&")
+        )
+
+    if exists("translations.json"):
+        os.remove("translations.json")
+    with open("translations.json", "w", encoding="utf-8") as file:
+        json.dump(translations, file)
